@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from warnings import warn
 
+from msca.linalg.matrix import Matrix
 import numpy as np
 from numpy.typing import ArrayLike
 from pandas import DataFrame
@@ -70,7 +71,8 @@ class ModelHub:
 
         model = self._get_model(cov_ids)
         model.attach_df(df)
-        mat = model.mat[0].to_numpy()
+        mat = model.mat[0]
+        mat = mat.to_numpy() if isinstance(mat, Matrix) else mat
         if np.linalg.matrix_rank(mat) < mat.shape[1]:
             warn(f"Singular design matrix {cov_ids=:}")
             return
