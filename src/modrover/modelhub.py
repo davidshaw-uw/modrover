@@ -45,16 +45,17 @@ class ModelHub:
             col_offset=self.specs.col_offset,
             col_weights=self.specs.col_weights,
         )
+
+        # first parameter gets col_covs and offset=True
+        # remaining parameters get fixed_covs and offset=False
         variables = [Variable(cov) for cov in col_covs]
-        model = self.specs.model_type(
-            data,
-            param_specs={
-                self.specs.model_param_name: {
-                    "variables": variables,
-                    "use_offset": True,
-                }
-            }
-        )
+        fixed_variables = [Variable(cov) for cov in self.specs.col_fixed_covs]
+        param_specs = {}
+        for i, param in enumerate(self.specs.model_param_names):
+            variables = variables if i == 0 else fixed_variables
+            param_specs[param] = {"variables": variables, "use_offset": i == 0}
+        model = self.specs.model_type(data, param_specs=param_specs)
+
         if df_coefs is not None:
             df_coefs = df_coefs.set_index("cov_name")
             model.opt_coefs = df_coefs.loc[col_covs, "mean"].to_numpy()
@@ -87,7 +88,7 @@ class ModelHub:
         return df[self.specs.col_obs]
 
     def _get_eval_pred(self, df: DataFrame) -> ArrayLike:
-        return df[self.specs.model_param_name]
+        return df[self.specs.model_param_names[0]]  # only first parameter
 
     def _predict_model(self,
                        cov_ids: CovIDs,
