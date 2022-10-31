@@ -27,15 +27,13 @@ class ModelSpecs:
             self.model_type = model_type_dict[self.model_type]
         self.model_param_name = self.model_type.param_names[0]
         if self.model_type == TobitModel:
-            if "intercept" in self.col_fixed_covs + self.col_covs:
-                msg = ("Column 'intercept' reserved for sigma. "
-                       "Please create separate column for mu.")
-                raise ValueError(msg)
+            if "sigma" in self.col_fixed_covs + self.col_covs:
+                raise ValueError("Column 'log_sigma' reserved for sigma.")
 
     @property
     def all_covs(self) -> Tuple[str, ...]:
         if self.model_type == TobitModel:
-            return (*self.col_fixed_covs, *self.col_covs, "intercept")
+            return (*self.col_fixed_covs, *self.col_covs, "log_sigma")
         return (*self.col_fixed_covs, *self.col_covs)
 
     @property

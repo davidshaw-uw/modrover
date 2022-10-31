@@ -53,7 +53,7 @@ class ModelHub:
                     "use_offset": True
                 },
                 "sigma": {
-                    "variables": [Variable("intercept")],
+                    "variables": [Variable("log_sigma")],
                     "use_offset": False
                 }
             }
@@ -68,7 +68,7 @@ class ModelHub:
 
         if df_coefs is not None:
             if self.specs.model_type == TobitModel:
-                col_covs += ["intercept"]
+                col_covs += ["log_sigma"]
             df_coefs = df_coefs.set_index("cov_name")
             model.opt_coefs = df_coefs.loc[col_covs, "mean"].to_numpy()
         return model
@@ -79,6 +79,8 @@ class ModelHub:
         if df is None:
             df = self.dataif.load_input(self.input_path.name)
             df = df[self.specs.col_holdout == 0].reset_index(drop=True)
+            if self.specs.model_type == TobitModel:
+                df["log_sigma"] = 1.
 
         model = self._get_model(cov_ids)
         model.attach_df(df)
@@ -115,6 +117,8 @@ class ModelHub:
         sub_dir = self.get_sub_dir(cov_ids)
         if df is None:
             df = self.dataif.load_input(self.input_path.name)
+            if self.specs.model_type == TobitModel:
+                df["log_sigma"] = 1.
         if df_coefs is None:
             df_coefs = self.dataif.load_output(sub_dir, "coefs.csv")
         model = self._get_model(cov_ids, df_coefs=df_coefs)
@@ -166,6 +170,8 @@ class ModelHub:
     def _run_model(self, cov_ids: CovIDs, col_holdout: Optional[str] = None):
         sub_dir = self.get_sub_dir(cov_ids)
         df = self.dataif.load_input(self.input_path.name)
+        if self.specs.model_type == TobitModel:
+            df["log_sigma"] = 1.
         if col_holdout is not None:
             df_train = df[df[col_holdout] == 0].reset_index(drop=True)
             sub_dir = "/".join([sub_dir, col_holdout])
