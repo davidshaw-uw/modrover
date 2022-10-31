@@ -18,12 +18,12 @@ class ModelSpecs:
     col_eval_pred: str = "pred"
     model_type: Type = model_type_dict["gaussian"]
     optimizer_options: Dict = field(default_factory=dict)
-    model_param_names: Tuple[str, ...] = field(init=False)
+    model_param_name: str = field(init=False)
 
     def __post_init__(self):
         if isinstance(self.model_type, str):
             self.model_type = model_type_dict[self.model_type]
-        self.model_param_names = self.model_type.param_names
+        self.model_param_name = self.model_type.param_names[0]
 
     @property
     def all_covs(self) -> Tuple[str, ...]:
