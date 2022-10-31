@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Tuple, Type
 
+from regmod.models import TobitModel
+
 from .globals import metric_dict, model_type_dict
 
 
@@ -24,6 +26,11 @@ class ModelSpecs:
         if isinstance(self.model_type, str):
             self.model_type = model_type_dict[self.model_type]
         self.model_param_name = self.model_type.param_names[0]
+        if self.model_type == TobitModel:
+            if "intercept" in self.col_fixed_covs + self.col_covs:
+                msg = ("Column 'intercept' reserved for sigma. "
+                       "Please create separate column for mu.")
+                raise ValueError(msg)
 
     @property
     def all_covs(self) -> Tuple[str, ...]:
