@@ -34,6 +34,8 @@ class ModelSpecs:
 
     @property
     def all_covs(self) -> Tuple[str, ...]:
+        if self.model_type == TobitModel:
+            return (*self.col_fixed_covs, *self.col_covs, "intercept")
         return (*self.col_fixed_covs, *self.col_covs)
 
     @property
