@@ -108,7 +108,7 @@ class ModelHub:
     def _get_eval_pred(self, df: DataFrame) -> ArrayLike:
         if self.specs.model_type == TobitModel:
             return df["mu_censored"]
-        return df[self.specs.model_param_names[0]]
+        return df[self.specs.model_param_name]
 
     def _predict_model(self,
                        cov_ids: CovIDs,
