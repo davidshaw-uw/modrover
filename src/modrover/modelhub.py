@@ -1,16 +1,14 @@
 from itertools import combinations
-from operator import attrgetter
 from pathlib import Path
 from typing import Dict, Optional
 from warnings import warn
 
-from msca.linalg.matrix import Matrix
 import numpy as np
 from numpy.typing import ArrayLike
 from pandas import DataFrame
 from pplkit.data.interface import DataInterface
 from regmod.data import Data
-from regmod.models import Model
+from regmod.models import Model, TobitModel
 from regmod.variable import Variable
 
 from .info import ModelEval, ModelSpecs
@@ -47,17 +45,30 @@ class ModelHub:
             col_weights=self.specs.col_weights,
         )
 
-        # first parameter gets col_covs and offset=True
-        # remaining parameters get fixed_covs and offset=False
         variables = [Variable(cov) for cov in col_covs]
-        fixed_variables = [Variable(cov) for cov in self.specs.col_fixed_covs]
-        param_specs = {}
-        for i, param in enumerate(self.specs.model_param_names):
-            variables = variables if i == 0 else fixed_variables
-            param_specs[param] = {"variables": variables, "use_offset": i == 0}
+        if self.specs.model_type == TobitModel:
+            param_specs = {
+                "mu": {
+                    "variables": variables,
+                    "use_offset": True
+                },
+                "sigma": {
+                    "variables": [Variable("intercept")],
+                    "use_offset": False
+                }
+            }
+        else:
+            param_specs = {
+                self.specs.model_param_name: {
+                    "variables": variables,
+                    "use_offset": True
+                }
+            }
         model = self.specs.model_type(data, param_specs=param_specs)
 
         if df_coefs is not None:
+            if self.specs.model_type == TobitModel:
+                col_covs += ["intercept"]
             df_coefs = df_coefs.set_index("cov_name")
             model.opt_coefs = df_coefs.loc[col_covs, "mean"].to_numpy()
         return model
@@ -71,15 +82,18 @@ class ModelHub:
 
         model = self._get_model(cov_ids)
         model.attach_df(df)
-        mat = model.mat[0]
-        mat = mat.to_numpy() if isinstance(mat, Matrix) else mat
+        if self.specs.model_type == TobitModel:
+            mat = model.mat[0]
+        else:
+            mat = model.mat[0].to_numpy()
         if np.linalg.matrix_rank(mat) < mat.shape[1]:
             warn(f"Singular design matrix {cov_ids=:}")
             return
         model.fit(**self.specs.optimizer_options)
 
+        covname = [var.name for pars in model.params for var in pars.variables]
         df_coefs = DataFrame({
-            "cov_name": map(attrgetter("name"), model.params[0].variables),
+            "cov_name": covname,
             "mean": model.opt_coefs,
             "sd": np.sqrt(np.diag(model.opt_vcov)),
         })
@@ -90,7 +104,9 @@ class ModelHub:
         return df[self.specs.col_obs]
 
     def _get_eval_pred(self, df: DataFrame) -> ArrayLike:
-        return df[self.specs.model_param_names[0]]  # only first parameter
+        if self.specs.model_type == TobitModel:
+            return df["mu_censored"]
+        return df[self.specs.model_param_names[0]]
 
     def _predict_model(self,
                        cov_ids: CovIDs,
