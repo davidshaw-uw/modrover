@@ -209,15 +209,16 @@ class ModelHub:
         self._run_model(cov_ids, verbose=print_warn)
         # compute average out-of-sample score
         sub_dir_path = self.dataif.get_fpath(sub_dir, key="output")
-        oos_dirs = [
-            d.name for d in sub_dir_path.iterdir() if d.is_dir()
-        ]
-        performance = self.dataif.load_output(sub_dir, "performance.yaml")
-        performance["outsample"] = sum([
-            self.dataif.load_output(sub_dir, oos_dir, "performance.yaml")["outsample"]
-            for oos_dir in oos_dirs
-        ]) / len(oos_dirs)
-        self.dataif.dump_output(performance, sub_dir, "performance.yaml")
+        if sub_dir_path.exists():
+            oos_dirs = [
+                d.name for d in sub_dir_path.iterdir() if d.is_dir()
+            ]
+            performance = self.dataif.load_output(sub_dir, "performance.yaml")
+            performance["outsample"] = sum([
+                self.dataif.load_output(sub_dir, oos_dir, "performance.yaml")["outsample"]
+                for oos_dir in oos_dirs
+            ]) / len(oos_dirs)
+            self.dataif.dump_output(performance, sub_dir, "performance.yaml")
 
     def get_model_performance(self,
                               cov_ids: CovIDs,
