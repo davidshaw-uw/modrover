@@ -75,10 +75,13 @@ class ModelHub:
 
     def _fit_model(self,
                    cov_ids: CovIDs,
-                   df: Optional[DataFrame] = None) -> DataFrame:
+                   df: Optional[DataFrame] = None,
+                   col_holdout: Optional[str] = None,
+                   verbose: bool = True) -> DataFrame:
         if df is None:
             df = self.dataif.load_input(self.input_path.name)
-            df = df[self.specs.col_holdout == 0].reset_index(drop=True)
+            if col_holdout is not None:
+                df = df[df[col_holdout] == 0].reset_index(drop=True)
             if self.specs.model_type == TobitModel:
                 df["log_sigma"] = 1.
 
@@ -89,7 +92,8 @@ class ModelHub:
         else:
             mat = model.mat[0].to_numpy()
         if np.linalg.matrix_rank(mat) < mat.shape[1]:
-            warn(f"Singular design matrix {cov_ids=:}")
+            if verbose:
+                warn(f"Singular design matrix {cov_ids=:}")
             return
         model.fit(**self.specs.optimizer_options)
 
@@ -167,7 +171,10 @@ class ModelHub:
         ]
         return all(f.exists() for f in outputs)
 
-    def _run_model(self, cov_ids: CovIDs, col_holdout: Optional[str] = None):
+    def _run_model(self,
+                   cov_ids: CovIDs,
+                   col_holdout: Optional[str] = None,
+                   verbose: bool = True):
         sub_dir = self.get_sub_dir(cov_ids)
         df = self.dataif.load_input(self.input_path.name)
         if self.specs.model_type == TobitModel:
@@ -177,7 +184,7 @@ class ModelHub:
             sub_dir = "/".join([sub_dir, col_holdout])
         else:
             df_train = df.copy()
-        df_coefs = self._fit_model(cov_ids, df_train)
+        df_coefs = self._fit_model(cov_ids, df_train, verbose=verbose)
         if df_coefs is not None:
             self.dataif.dump_output(df_coefs, sub_dir, "coefs.csv")
             df_pred = self._predict_model(cov_ids, df, df_coefs)
@@ -185,15 +192,21 @@ class ModelHub:
             performance = self._eval_model(cov_ids, df_pred, col_holdout=col_holdout)
             self.dataif.dump_output(performance, sub_dir, "performance.yaml")
 
-    def run_model(self, cov_ids: CovIDs):
+    def run_model(self, cov_ids: CovIDs, verbose: int = 2):
+        # kwarg `verbose` controls singular matrix warnings
+        # 0 - no warnings
+        # 1 - full model warning
+        # 2 - full and holdout model warnings
         if self._has_ran(cov_ids):
             return
         sub_dir = self.get_sub_dir(cov_ids)
         # fit all the sub models for each holdout set
         for col_holdout in self.specs.col_holdout:
-            self._run_model(cov_ids, col_holdout)
+            print_warn = verbose == 2
+            self._run_model(cov_ids, col_holdout, print_warn)
         # fit the full model
-        self._run_model(cov_ids)
+        print_warn = verbose > 0
+        self._run_model(cov_ids, verbose=print_warn)
         # compute average out-of-sample score
         sub_dir_path = self.dataif.get_fpath(sub_dir, key="output")
         oos_dirs = [
