@@ -20,9 +20,14 @@ class Rover:
             for name in self.specs.strategy_names
         ]
 
-    def explore(self):
+    def explore(self, verbose: int = 2):
+        # kwarg `verbose` controls singular matrix warnings
+        # 0 - no warnings
+        # 1 - full model warning
+        # 2 - full and holdout model warnings
         for i, strategy in enumerate(self.strategies):
             strategy.implement(
+                verbose=verbose,
                 **self.specs.strategy_options.get(
                     self.specs.strategy_names[i], {}
                 )

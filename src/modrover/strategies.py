@@ -17,8 +17,8 @@ class RoverStrategy(ABC):
     def implement(self, **kwargs):
         pass
 
-    def run_model(self, cov_ids: CovIDs):
-        self.modelhub.run_model(cov_ids)
+    def run_model(self, cov_ids: CovIDs, verbose: int = 2):
+        self.modelhub.run_model(cov_ids, verbose)
         if cov_ids not in self.performances and self.modelhub._has_ran(cov_ids):
             performance = self.modelhub.get_model_performance(cov_ids)
             self.performances[cov_ids] = performance
@@ -26,10 +26,10 @@ class RoverStrategy(ABC):
 
 class FullExplore(RoverStrategy):
 
-    def implement(self, **kwargs):
+    def implement(self, verbose: int = 2, **kwargs):
         cov_ids_set = self.modelhub.get_full_cov_ids_set()
         for cov_ids in cov_ids_set:
-            self.modelhub.run_model(cov_ids)
+            self.modelhub.run_model(cov_ids, verbose)
 
 
 class DownExplore(RoverStrategy):
@@ -64,13 +64,13 @@ class DownExplore(RoverStrategy):
                 cov_ids_set.remove(cov_ids)
         return cov_ids_set
 
-    def implement(self, **kwargs):
+    def implement(self, verbose: int = 2, **kwargs):
         # fit root model
-        self.modelhub.run_model(tuple())
+        self.modelhub.run_model(tuple(), verbose)
         # fit first layer
         next_cov_ids_set = self.modelhub.get_child_cov_ids_set(tuple())
         for cov_ids in next_cov_ids_set:
-            self.run_model(cov_ids)
+            self.run_model(cov_ids, verbose)
 
         # filter the next layer
         curr_cov_ids_set = self._filter_cov_ids_set(
@@ -82,7 +82,7 @@ class DownExplore(RoverStrategy):
         ])
         while len(next_cov_ids_set) > 0:
             for cov_ids in next_cov_ids_set:
-                self.run_model(cov_ids)
+                self.run_model(cov_ids, verbose)
             curr_cov_ids_set = self._filter_cov_ids_set(
                 next_cov_ids_set, **kwargs
             )
@@ -124,14 +124,14 @@ class UpExplore(RoverStrategy):
                 cov_ids_set.remove(cov_ids)
         return cov_ids_set
 
-    def implement(self, **kwargs):
+    def implement(self, verbose: int = 2, **kwargs):
         # fit full model
         full_cov_ids = self.modelhub.get_full_cov_ids()
-        self.modelhub.run_model(full_cov_ids)
+        self.modelhub.run_model(full_cov_ids, verbose)
         # fit first layer
         next_cov_ids_set = self.modelhub.get_parent_cov_ids_set(full_cov_ids)
         for cov_ids in next_cov_ids_set:
-            self.run_model(cov_ids)
+            self.run_model(cov_ids, verbose)
 
         # filter the next layer
         curr_cov_ids_set = self._filter_cov_ids_set(
@@ -143,7 +143,7 @@ class UpExplore(RoverStrategy):
         ])
         while len(next_cov_ids_set) > 0:
             for cov_ids in next_cov_ids_set:
-                self.run_model(cov_ids)
+                self.run_model(cov_ids, verbose)
             curr_cov_ids_set = self._filter_cov_ids_set(
                 next_cov_ids_set, **kwargs
             )
