@@ -18,6 +18,7 @@ class ModelSpecs:
     col_weights: str = "weights"
     col_eval_obs: str = "obs"
     col_eval_pred: str = "pred"
+    inv_link: str = None
     model_type: Type = model_type_dict["gaussian"]
     optimizer_options: Dict = field(default_factory=dict)
     model_param_name: str = field(init=False)
@@ -26,6 +27,9 @@ class ModelSpecs:
         if isinstance(self.model_type, str):
             self.model_type = model_type_dict[self.model_type]
         self.model_param_name = self.model_type.param_names[0]
+        if self.inv_link is None:
+            param_specs = self.model_type.default_param_specs
+            self.inv_link = param_specs[self.model_param_name]["inv_link"]
         if self.model_type == TobitModel:
             if "sigma" in self.col_fixed_covs + self.col_covs:
                 raise ValueError("Column 'log_sigma' reserved for sigma.")

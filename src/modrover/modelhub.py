@@ -50,19 +50,18 @@ class ModelHub:
             param_specs = {
                 "mu": {
                     "variables": variables,
-                    "inv_link": "exp",
+                    "inv_link": self.specs.inv_link,
                     "use_offset": True
                 },
                 "sigma": {
-                    "variables": [Variable("log_sigma")],
-                    "inv_link": "exp",
-                    "use_offset": False
+                    "variables": [Variable("log_sigma")]
                 }
             }
         else:
             param_specs = {
                 self.specs.model_param_name: {
                     "variables": variables,
+                    "inv_link": self.specs.inv_link,
                     "use_offset": True
                 }
             }
