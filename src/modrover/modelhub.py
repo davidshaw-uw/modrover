@@ -78,7 +78,7 @@ class ModelHub:
                    cov_ids: CovIDs,
                    df: Optional[DataFrame] = None,
                    col_holdout: Optional[str] = None,
-                   verbose: bool = True) -> DataFrame:
+                   verbose: bool = True) -> tuple[DataFrame, DataFrame]:
         if df is None:
             df = self.dataif.load_input(self.input_path.name)
             if col_holdout is not None:
@@ -104,8 +104,13 @@ class ModelHub:
             "mean": model.opt_coefs,
             "sd": np.sqrt(np.diag(model.opt_vcov)),
         })
+        df_vcov = DataFrame(
+            data=model.opt_vcov,
+            index=covname,
+            columns=covname,
+        )
 
-        return df_coefs
+        return df_coefs, df_vcov
 
     def _get_eval_obs(self, df: DataFrame) -> ArrayLike:
         return df[self.specs.col_obs]
@@ -185,10 +190,11 @@ class ModelHub:
             sub_dir = "/".join([sub_dir, col_holdout])
         else:
             df_train = df.copy()
-        df_coefs = self._fit_model(cov_ids, df_train, verbose=verbose)
-        if df_coefs is not None:
-            self.dataif.dump_output(df_coefs, sub_dir, "coefs.csv")
-            df_pred = self._predict_model(cov_ids, df, df_coefs)
+        result = self._fit_model(cov_ids, df_train, verbose=verbose)
+        if result is not None:
+            self.dataif.dump_output(result[0], sub_dir, "coefs.csv")
+            self.dataif.dump_output(result[1], sub_dir, "vcov.csv")
+            df_pred = self._predict_model(cov_ids, df, result[0])
             self.dataif.dump_output(df_pred, sub_dir, "result.parquet")
             performance = self._eval_model(cov_ids, df_pred, col_holdout=col_holdout)
             self.dataif.dump_output(performance, sub_dir, "performance.yaml")
